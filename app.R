@@ -9,11 +9,10 @@ all_data <- read_csv("data.csv") %>% select(-c(Icon)) %>%
   mutate(log_scale = 
          ifelse(is.na(MW), 0, 1000 * -1000 * log(1 - MW/sum(MW, na.rm = T)))
   )
-oper_data <- all_data %>% 
-  filter(stage == 'Operational')
+oper_data_mw <- all_data %>% filter(stage == 'Operational') %>% select(MW)
 
 # set up color palettes for legend ---------------------------------------------
-mw_palette <- colorNumeric(palette = "BuGn", domain = all_data$MW, n = 5)
+mw_palette <- colorNumeric(palette = "BuGn", domain = oper_data_mw, n = 5)
 stage_palette <- colorFactor(palette = c("black", "red", "green", "blue"), 
                              domain = as.factor(all_data$stage))
 
@@ -27,15 +26,15 @@ create_label <- function(name, stage, mw) {
 
 # user interface ---------------------------------------------------------------
 ui <- bootstrapPage (
+  
   tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
   leafletOutput("map", width = "100%", height = "100%"),
   absolutePanel(
     top = 100, left = 10,
-    
     sliderInput(
       inputId = "rng", 
       label = "Select Range of Power Output to Display", 
-      min = 0, max = max(oper_data$MW), value = c(0, max(oper_data$MW))
+      min = 0, max = max(oper_data$MW), value = c(0, max(oper_data_mw))
     ), 
     checkboxInput(
       inputId = "scl",
@@ -63,40 +62,55 @@ server <- function(input, output, session) {
   output$map <- renderLeaflet({
     leaflet(all_data) %>% 
       addTiles() %>%  
-      setView(lng = -4.3, lat = 55, zoom = 6)  
+      setView(lng = -4.3, lat = 55, zoom = 6) 
   })
 
-  # react to filtering of markers for all data ---------------------------------
+  # react to filtering of data -------------------------------------------------
   observe({
-    
+ 
     # map proxy ----------------------------------------------------------------
     proxy <- leafletProxy("map", data = filter_data()) %>% 
        clearShapes() %>% 
-       clearGroup("oper")
+       clearGroup("scaled_operational") %>% 
+       clearGroup("all")
     
-    # update filtered base points ---------------------------------------------- 
+    # update base points ------------------------------------------------------- 
     proxy %>%   
       addCircles(popup = ~create_label(name, stage, MW),
                  fillOpacity = 1, radius = 1, col = ~stage_palette(stage),
-                 group = "all_stage") %>% 
+                 group = "all") %>% 
       addLegend("bottomleft", pal = stage_palette, values = ~stage, 
-                title = "Stage of Development", layerId = "stg")
-   
-    # toggle scaled operational points ----------------------------------------- 
-    if (input$scl & 'Operational' %in% input$lyrs){
-      proxy %>% 
+                title = "Stage of Development", layerId = "all")
+    
+    # update scaled points of operational plant --------------------------------
+    if ('Operational' %in% input$lyrs) {
+      proxy %>%  
         addCircles(data = filter_data() %>% filter(stage == 'Operational'),
                    radius = ~log_scale, fillOpacity = 0.5, 
                    popup = ~create_label(name, stage, MW),  
                    fillColor = ~mw_palette(MW),weight = 1, col = "green",
-                   group = "oper") %>% 
-        addLegend("bottomright", pal = mw_palette, values = ~oper_data$MW, 
-                title = "Ouput (MW)", 
-                layerId = "oper")
+                   group = "scaled_operational")  
+    }
+  })       
+  
+  # react to toggling of display of scaeled data -------------------------------  
+  observeEvent(input$scl, {  
+   
+    # map proxy ---------------------------------------------------------------- 
+    proxy <- leafletProxy("map", data = filter_data()) #%>%
+   
+    # toggle scaled operational points ----------------------------------------- 
+    if (input$scl){
+      proxy %>% 
+        showGroup("scaled_operational") %>% 
+        addLegend("bottomright", pal = mw_palette, 
+                  values = unlist(oper_data_mw), 
+                  title = "Ouput (MW)", 
+                  layerId = "scaled_operational")
     } else {
       proxy %>%
-        removeControl("oper") %>% 
-        clearGroup("oper")
+        hideGroup("scaled_operational") %>% 
+        removeControl("scaled_operational")
     } 
   })
   
