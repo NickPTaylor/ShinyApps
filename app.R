@@ -21,7 +21,7 @@ create_label <- function(name, stage, mw) {
   lab <- paste(sep = "<br/>",
                paste("<b>", name, "</b>"),
                paste("Status:", stage),
-               ifelse(is.na(mw), "", paste("Output:", mw)))
+               ifelse(is.na(mw), "", sprintf("Output: %.2f MW", mw)))
 }
 
 # user interface ---------------------------------------------------------------
