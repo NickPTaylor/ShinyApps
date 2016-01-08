@@ -2,6 +2,7 @@ library(readr)
 library(dplyr)
 library(leaflet)
 library(shiny)
+library(shinydashboard)
 
 # load data --------------------------------------------------------------------
 all_data <- read_csv("data.csv") %>% select(-c(Icon)) %>% 
@@ -25,12 +26,20 @@ create_label <- function(name, stage, mw) {
 }
 
 # user interface ---------------------------------------------------------------
-ui <- bootstrapPage (
-  
-  tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
-  leafletOutput("map", width = "100%", height = "100%"),
-  absolutePanel(
-    top = 100, left = 10,
+ui <- dashboardPage(
+  dashboardHeader(title = 'UK Wind Farms'),
+  dashboardSidebar(
+    h1('Description'),
+    p(
+      'This application shows the locations of UK wind farms categorired 
+      by stage of development.  The use can select the stages of development 
+      to display.  In addition, for operational wind turbines, the user can 
+      choose to scale the markers by power output.  The scaling is log based
+      since the vast majority of wind farms are small scale but there are a few
+      with very high output relatively.  Furthermore, the user can choose to
+      filter to show wind farms within a specified range of power outputs.
+      '
+    ),
     sliderInput(
       inputId = "rng", 
       label = "Select Range of Power Output to Display", 
@@ -45,7 +54,13 @@ ui <- bootstrapPage (
       choices = levels(as.factor(all_data$stage)), 
       selected = levels(as.factor(all_data$stage))
     )
-  )
+  ),
+  dashboardBody(
+    tags$head(tags$style("#map{height:90vh !important;}")),
+    fluidRow(
+      leafletOutput("map")
+    )
+  ) 
 )
 
 # server -----------------------------------------------------------------------
@@ -57,12 +72,12 @@ server <- function(input, output, session) {
       filter(stage %in% input$lyrs) %>% 
       filter(is.na(MW) | (MW > input$rng[1] & MW < input$rng[2]))
     })
-  
+
   # base map output ------------------------------------------------------------
   output$map <- renderLeaflet({
     leaflet(all_data) %>% 
       addTiles() %>%  
-      setView(lng = -4.3, lat = 55, zoom = 6) 
+      setView(lng = -4.3, lat = 55, zoom = 5) 
   })
 
   # react to filtering of data -------------------------------------------------
