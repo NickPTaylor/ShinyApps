@@ -3,6 +3,7 @@ library(dplyr)
 library(leaflet)
 library(shiny)
 library(shinydashboard)
+library(ggplot2)
 
 # load data --------------------------------------------------------------------
 all_data <- read_csv("data.csv") %>% select(-c(Icon)) %>% 
@@ -37,28 +38,51 @@ ui <- dashboardPage(
       choose to scale the markers by power output.  The scaling is log based
       since the vast majority of wind farms are small scale but there are a few
       with very high output relatively.  Furthermore, the user can choose to
-      filter to show wind farms within a specified range of power outputs.
-      '
-    ),
-    sliderInput(
-      inputId = "rng", 
-      label = "Select Range of Power Output to Display", 
-      min = 0, max = max(oper_data$MW), value = c(0, max(oper_data_mw))
-    ), 
-    checkboxInput(
-      inputId = "scl",
-      label = "Scale Operational Plant Markers by Power Output" 
-    ),
-    checkboxGroupInput(
-      inputId = "lyrs", label = "Display Layers",
-      choices = levels(as.factor(all_data$stage)), 
-      selected = levels(as.factor(all_data$stage))
+      filter to show wind farms within a specified range of power outputs.'
     )
   ),
   dashboardBody(
-    tags$head(tags$style("#map{height:90vh !important;}")),
+    tags$head(tags$style("#map{height:80vh !important;}")),
+    tags$head(tags$style("#plot{height:30vh !important;}")),
     fluidRow(
-      leafletOutput("map")
+      column(width = 6,
+        box(
+          width = NULL,  
+          solidHeader = TRUE,  
+          status = "primary",
+          title = "Map",
+          leafletOutput("map")
+        )
+      ),
+      column(width = 6,
+        box(
+          width = NULL,
+          solidHeader = TRUE,
+          status = "primary",
+          title = "Controls",
+          sliderInput(
+            inputId = "rng", 
+            label = "Select Range of Power Output to Display", 
+            min = 0, max = max(oper_data$MW), value = c(0, max(oper_data_mw))
+          ), 
+          checkboxInput(
+            inputId = "scl",
+            label = "Scale Operational Plant Markers by Power Output" 
+          ),
+          checkboxGroupInput(
+            inputId = "lyrs", label = "Display Layers",
+            choices = levels(as.factor(all_data$stage)), 
+            selected = levels(as.factor(all_data$stage))
+          )
+        ), 
+        box(
+          width = NULL,
+          solidHeader = TRUE,
+          status = "primary",
+          title = "Plot",
+          plotOutput("plot")
+        )  
+      )
     )
   ) 
 )
@@ -128,11 +152,13 @@ server <- function(input, output, session) {
         removeControl("scaled_operational")
     } 
   })
-  
-#   # plot output --------------------------------------------------------------
-#   output$plot <- renderPlot({
-#     hist(filter_data()$MW) 
-#   })
+  # plot output --------------------------------------------------------------
+  output$plot <- renderPlot({
+    data.df <- filter_data() %>% 
+      filter(stage == 'Operational') %>% 
+      select(MW)
+    ggplot(data = data.df, aes(MW)) + geom_histogram()
+  })
 }
 
 shinyApp(ui = ui, server = server)
