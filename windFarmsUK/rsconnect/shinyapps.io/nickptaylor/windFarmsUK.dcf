@@ -1,8 +1,8 @@
 name: windFarmsUK
 account: nickptaylor
 server: shinyapps.io
-bundleId: 345819
+bundleId: 349458
 url: https://nickptaylor.shinyapps.io/windFarmsUK/
-when: 1452257630.76904
+when: 1452771323.96521
 asMultiple: FALSE
 asStatic: FALSE

@@ -5,6 +5,13 @@ library(shiny)
 library(shinydashboard)
 library(ggplot2)
 
+# Ref: Data is downloaded from here --------------------------------------------
+# Ideally, data would be downloaded directly from web on the fly. But I am
+# unable to find a suitable source at the moment.  So currently, data is
+# downloaded and included in the project
+url <- paste("https://www.google.com/fusiontables/", 
+  "DataSource?docid=18qmes8ba-SC_2knKavaJtDwivewagUIfwKgScGI#rows:id=1")
+
 # load data --------------------------------------------------------------------
 all_data <- read_csv("data.csv") %>% select(-c(Icon)) %>% 
   rename(lat = Lat, lng = Long, stage = Stage) %>% 
